@@ -2,17 +2,20 @@ import * as React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
     View,
-    Text,
-    StyleSheet
+    StyleSheet,
+    SafeAreaView
 } from 'react-native';
 
-import {TodoList} from './TodoList'
+import TodoList from '../Components/TodoList'
+import AddTodo from '../Components/AddTodo'
 
 const HomeScreen = ({navigation}) => {
     return(
         <View style={styles.container}>
-            <Text>Home</Text>
-            
+            <SafeAreaView>
+                <TodoList></TodoList>
+                <AddTodo></AddTodo>
+            </SafeAreaView>
             <StatusBar style="auto" />
         </View>
     )

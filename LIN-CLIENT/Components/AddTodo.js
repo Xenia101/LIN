@@ -1,10 +1,10 @@
 import * as React from 'react';
+import axios from 'axios';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { 
     TextInput,
     View,
-    Text,
-    TouchableHighlight,
+    TouchableOpacity,
     StyleSheet,
     Dimensions ,
     KeyboardAvoidingView,
@@ -14,30 +14,59 @@ const behavior = Platform.OS === "ios" ? "padding" : null
 const keyboardVerticalOffset = Platform.OS === 'ios' ? 86 : 0
 var {width, height} = Dimensions.get('window');
 
-const AddTodo = () => {
-    return (
-        <KeyboardAvoidingView behavior={behavior} keyboardVerticalOffset={keyboardVerticalOffset}>
-            <View style={styles.inputArea}>
-                <View style={{flex:5}}>
-                    <TextInput                    
-                        style={styles.input}
-                        placeholder=""
-                        placeholderTextColor={'#999'}
-                        autoCorrect={false}
-                        underlineColorAndroid='transparent'
-                    />
-                </View>
-                <View style={{flex:2}}>
-                    <TouchableHighlight style={styles.button}>
-                        <MaterialCommunityIcons style={styles.submitText}
-                            name="arrow-up-drop-circle"
-                            color="#A593E0"
+export default class AddTodo extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            todoItem : ""
+        };
+    }
+
+    onPressHandler = () => {
+        if(this.state.todoItem.length === 0){
+            return
+        }
+        console.log(this.state.todoItem)
+        
+        const data = {
+            title: this.state.todoItem,
+            completed: 0
+        }
+
+        axios.post('http://xenia.kr:8080/api/v1/todos/', { data })
+        .then(res => {
+            console.log(res)
+        })
+    }
+    
+    render() {
+        return (
+            <KeyboardAvoidingView behavior={behavior} keyboardVerticalOffset={keyboardVerticalOffset}>
+                <View style={styles.inputArea}>
+                    <View style={{flex:5}}>
+                        <TextInput                    
+                            style={styles.input}
+                            placeholder="Aa"
+                            placeholderTextColor={'#999'}
+                            autoCorrect={false}
+                            contextMenuHidden={true}
+                            selectionColor={'#A593E0'}
+                            underlineColorAndroid='transparent'
+                            onChangeText={(todoItem) => this.setState({todoItem})}
                         />
-                    </TouchableHighlight>
+                    </View>
+                    <View style={{flex:2}}>
+                        <TouchableOpacity style={styles.button} onPress={this.onPressHandler}>
+                            <MaterialCommunityIcons style={styles.submitText}
+                                name="arrow-up-drop-circle"
+                                color="#A593E0"
+                            />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </KeyboardAvoidingView>
-    );
+            </KeyboardAvoidingView>
+        );
+    }
 };
 
 const styles = StyleSheet.create({
@@ -49,11 +78,12 @@ const styles = StyleSheet.create({
     },
     input: {
         borderRadius: 10,
+        paddingHorizontal: 6,
         textAlign: 'left',
         alignSelf: 'flex-start',
         backgroundColor: '#ececec',
         width: width-60,
-        fontSize: 24,
+        fontSize: 28,
     },
     button: {
         paddingTop: 2,
@@ -62,8 +92,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     submitText: {
-        fontSize: 24,
+        fontSize: 28,
     }
 })
-
-export default AddTodo;

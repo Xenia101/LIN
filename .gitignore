@@ -1,0 +1,4 @@
+.vscode/*
+
+DB
+./RestAPI/DB/*.db

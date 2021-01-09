@@ -18,7 +18,7 @@ export default class AddTodo extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            todoItem : ""
+            todoItem : "",
         };
     }
 
@@ -26,16 +26,23 @@ export default class AddTodo extends React.Component {
         if(this.state.todoItem.length === 0){
             return
         }
-        console.log(this.state.todoItem)
-        
-        const data = {
-            title: this.state.todoItem,
-            completed: 0
-        }
 
-        axios.post('http://xenia.kr:8080/api/v1/todos/', { data })
+        const formData = new FormData();
+        formData.append('title', this.state.todoItem);
+        formData.append('completed', 0);
+
+        axios({
+            url: 'http://xenia.kr:8080/api/v1/todos/',
+            method: 'POST',
+            data: formData,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'multipart/form-data',
+            }
+        })
         .then(res => {
             console.log(res)
+            this.textInput.clear();
         })
     }
     
@@ -44,7 +51,8 @@ export default class AddTodo extends React.Component {
             <KeyboardAvoidingView behavior={behavior} keyboardVerticalOffset={keyboardVerticalOffset}>
                 <View style={styles.inputArea}>
                     <View style={{flex:5}}>
-                        <TextInput                    
+                        <TextInput    
+                            ref={input => { this.textInput = input }}                 
                             style={styles.input}
                             placeholder="Aa"
                             placeholderTextColor={'#999'}
@@ -83,7 +91,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         backgroundColor: '#ececec',
         width: width-60,
-        fontSize: 28,
+        fontSize: 20,
     },
     button: {
         paddingTop: 2,

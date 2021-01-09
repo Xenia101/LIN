@@ -10,12 +10,16 @@ import {
     View,
     ActivityIndicator,
     LogBox,
+    TextInput,
     Dimensions,
     TouchableOpacity,
-    Animated
+    KeyboardAvoidingView,
+    RefreshControl 
 } from 'react-native';
 
 var {width, height} = Dimensions.get('window');
+const behavior = Platform.OS === "ios" ? "padding" : null
+const keyboardVerticalOffset = Platform.OS === 'ios' ? 86 : 0
 
 export default class TodoList extends Component {
     constructor(props) {
@@ -23,23 +27,29 @@ export default class TodoList extends Component {
         this.state = { 
             data: [],
             isLoading: true,
+            todoItem : "",
+            isFetching: false,
+            selectedIds: [],
         };
     }
 
     componentDidMount() {
         LogBox.ignoreLogs(['VirtualizedLists should never be nested']);
         
+        this.getAllItem()
+    }
+
+    getAllItem = () => {
         axios.get('http://xenia.kr:8080/api/v1/todos/')
         .then(res => {
             this.setState({
                 data: res.data,
                 isLoading: false,
-                selectedIds: [],
             });
         })
     }
 
-    onRemove = (index) => {
+    onRemoveItem = (index) => {
         axios.delete(`http://xenia.kr:8080/api/v1/todos/${index}`)
         .then(async res => {
             if(res.status == 200){
@@ -62,7 +72,7 @@ export default class TodoList extends Component {
 
             <Text style={styles.text}>{item.title}</Text>
     
-            <TouchableOpacity style={styles.removeArea} onPress={() => this.onRemove(item.index)}>
+            <TouchableOpacity style={styles.removeArea} onPress={() => this.onRemoveItem(item.index)}>
                 <MaterialCommunityIcons style={styles.remove}
                     name="close-circle"
                     color="#A593E0"
@@ -70,6 +80,38 @@ export default class TodoList extends Component {
             </TouchableOpacity>
         </View>
     )
+
+    onAddItem = () => {
+        if(this.state.todoItem.length === 0){
+            return
+        }
+
+        const formData = new FormData();
+        formData.append('title', this.state.todoItem);
+        formData.append('completed', 0);
+
+        axios({
+            url: 'http://xenia.kr:8080/api/v1/todos/',
+            method: 'POST',
+            data: formData,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'multipart/form-data',
+            }
+        })
+        .then(res => {
+            this.setState({
+                todoItem: '',
+                isFetching: true,
+            },() => {
+                this.getAllItem();
+                this.setState({
+                    isFetching: false,
+                })
+            });
+            this.textInput.clear();
+        })
+    } 
 
     render() {
         if (this.state.isLoading) {
@@ -81,14 +123,43 @@ export default class TodoList extends Component {
         }
 
         return (
-            <ScrollView contentContainerStyle={styles.listContainer} keyboardShouldPersistTaps='always'>
-                <FlatList
-                    data={this.state.data.data}
-                    extraData={this.state.selectedIds}
-                    renderItem={this.renderItem}
-                    keyExtractor={(item, index) => index.toString()}
-                />
-            </ScrollView>
+            <>
+                <ScrollView contentContainerStyle={styles.listContainer} keyboardShouldPersistTaps='always'>
+                    <FlatList
+                        data={this.state.data.data}
+                        extraData={this.state.selectedIds}
+                        renderItem={this.renderItem}
+                        keyExtractor={(item, index) => index.toString()}
+                        onRefresh={this.onAddItem}
+                        refreshing={this.state.isFetching}
+                    />
+                </ScrollView>
+                <KeyboardAvoidingView behavior={behavior} keyboardVerticalOffset={keyboardVerticalOffset}>
+                    <View style={styles.inputArea}>
+                        <View style={{flex:5}}>
+                            <TextInput    
+                                ref={input => { this.textInput = input }}                 
+                                style={styles.input}
+                                placeholder="Aa"
+                                placeholderTextColor={'#999'}
+                                autoCorrect={false}
+                                contextMenuHidden={true}
+                                selectionColor={'#A593E0'}
+                                underlineColorAndroid='transparent'
+                                onChangeText={(todoItem) => this.setState({todoItem})}
+                            />
+                        </View>
+                        <View style={{flex:2}}>
+                            <TouchableOpacity style={styles.button} onPress={this.onAddItem}>
+                                <MaterialCommunityIcons style={styles.submitText}
+                                    name="arrow-up-drop-circle"
+                                    color="#A593E0"
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </>
         );
     }
 };
@@ -152,5 +223,29 @@ const styles = StyleSheet.create({
         width: 30,
         height: 30,
         fontSize: 25,
+    },
+    inputArea: {
+        width: width,
+        flexDirection:"row",
+        padding: 4,
+        backgroundColor: '#fff',
+    },
+    input: {
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        textAlign: 'left',
+        alignSelf: 'flex-start',
+        backgroundColor: '#ececec',
+        width: width-60,
+        fontSize: 28,
+    },
+    button: {
+        paddingTop: 2,
+        marginRight: 15,
+        alignSelf: 'flex-end',
+        textAlign: 'center',
+    },
+    submitText: {
+        fontSize: 28,
     }
 })

@@ -2,8 +2,10 @@ import * as React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
     View,
+    Keyboard,
     StyleSheet,
-    SafeAreaView
+    SafeAreaView,
+    TouchableWithoutFeedback
 } from 'react-native';
 
 import TodoList from '../Components/TodoList'
@@ -11,9 +13,11 @@ import TodoList from '../Components/TodoList'
 const HomeScreen = ({navigation}) => {
     return(
         <View style={styles.container}>
-            <SafeAreaView>
-                <TodoList></TodoList>
-            </SafeAreaView>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                <SafeAreaView>
+                    <TodoList></TodoList>
+                </SafeAreaView>
+            </TouchableWithoutFeedback>
             <StatusBar style="auto" />
         </View>
     )

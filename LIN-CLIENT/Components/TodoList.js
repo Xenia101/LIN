@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { 
     ScrollView,
     Text,
+    Image,
     FlatList,
     StyleSheet, 
     View,
@@ -13,13 +14,12 @@ import {
     TextInput,
     Dimensions,
     TouchableOpacity,
-    KeyboardAvoidingView,
-    RefreshControl 
+    KeyboardAvoidingView, 
 } from 'react-native';
 
 var {width, height} = Dimensions.get('window');
 const behavior = Platform.OS === "ios" ? "padding" : null
-const keyboardVerticalOffset = Platform.OS === 'ios' ? 86 : 0
+const keyboardVerticalOffset = Platform.OS === 'ios' ? 90 : 0
 
 export default class TodoList extends Component {
     constructor(props) {
@@ -30,6 +30,8 @@ export default class TodoList extends Component {
             todoItem : "",
             isFetching: false,
             selectedIds: [],
+            doneTodo: [],
+            empty: true,
         };
     }
 
@@ -42,37 +44,43 @@ export default class TodoList extends Component {
     getAllItem = () => {
         axios.get('http://xenia.kr:8080/api/v1/todos/')
         .then(res => {
-            this.setState({
-                data: res.data,
-                isLoading: false,
-            });
-        })
-    }
-
-    onRemoveItem = (index) => {
-        axios.delete(`http://xenia.kr:8080/api/v1/todos/${index}`)
-        .then(async res => {
-            if(res.status == 200){
-                const selectedIds = [...this.state.selectedIds]
-                if(selectedIds.includes(index)){
-                    selectedIds = selectedIds.filter(_index => _index !== index)
-                } else {
-                    selectedIds.push(index)
-                    await this.setState({selectedIds})
-                }
+            if(res.status == 200) {
+                this.setState({
+                    data: res.data,
+                    isLoading: false,
+                    empty: false,
+                });
             }
+        }).catch(error => {
+            this.setState({
+                isLoading: false,
+                empty: true,
+            })
+            return error
         })
     }
 
     renderItem = ({item}) => (
         <View style={this.state.selectedIds.includes(item.index) ? styles.containerRemove : styles.container}>
-            <TouchableOpacity>
-                <View style={styles.circle} />
+            <TouchableOpacity onPress={() => this.onToggle(item.index, item.title, item.completed)}>
+                { item.completed ? (
+                    <View style={styles.Completed_circle}>
+                        <MaterialCommunityIcons
+                            name="check"
+                            color="#A593E0"
+                            size={24}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.circle} />
+                )}
             </TouchableOpacity>
 
-            <Text style={styles.text}>{item.title}</Text>
+            <Text style={item.completed ? styles.Complete_text : styles.text}>
+                {item.title}
+            </Text>
     
-            <TouchableOpacity style={styles.removeArea} onPress={() => this.onRemoveItem(item.index)}>
+            <TouchableOpacity style={styles.removeArea} onPress={() => this.onRemoveItem(item, item.index)}>
                 <MaterialCommunityIcons style={styles.remove}
                     name="close-circle"
                     color="#A593E0"
@@ -80,6 +88,40 @@ export default class TodoList extends Component {
             </TouchableOpacity>
         </View>
     )
+
+    onToggle = (index, title, completed) => {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('completed', completed ? 0 : 1);
+
+        axios({
+            url: `http://xenia.kr:8080/api/v1/todos/${index}`,
+            method: 'PUT',
+            data: formData,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'multipart/form-data',
+            }
+        })
+        .then(async res => {
+            this.setState({
+                isFetching: true,
+            },() => {
+                this.getAllItem();
+                this.setState({
+                    isFetching: false,
+                })
+            })
+
+            const doneTodoList = [...this.state.doneTodo]
+            if(doneTodoList.includes(index)){
+                doneTodoList = doneTodoList.filter(_index => _index !== index)
+            } else {
+                doneTodoList.push(index)
+                await this.setState({doneTodoList})
+            }
+        })
+    }
 
     onAddItem = () => {
         if(this.state.todoItem.length === 0){
@@ -111,7 +153,22 @@ export default class TodoList extends Component {
             });
             this.textInput.clear();
         })
-    } 
+    }
+    
+    onRemoveItem = (item, index) => {
+        axios.delete(`http://xenia.kr:8080/api/v1/todos/${index}`)
+        .then(async res => {
+            if(res.status == 200){
+                const selectedIds = [...this.state.selectedIds]
+                if(selectedIds.includes(index)){
+                    selectedIds = selectedIds.filter(_index => _index !== index)
+                } else {
+                    selectedIds.push(index)
+                    await this.setState({selectedIds})
+                }
+            }
+        })
+    }
 
     render() {
         if (this.state.isLoading) {
@@ -124,16 +181,26 @@ export default class TodoList extends Component {
 
         return (
             <>
-                <ScrollView contentContainerStyle={styles.listContainer} keyboardShouldPersistTaps='always'>
-                    <FlatList
-                        data={this.state.data.data}
-                        extraData={this.state.selectedIds}
-                        renderItem={this.renderItem}
-                        keyExtractor={(item, index) => index.toString()}
-                        onRefresh={this.onAddItem}
-                        refreshing={this.state.isFetching}
-                    />
-                </ScrollView>
+                {this.state.empty ? (
+                    <View style={styles.emptyContainer} keyboardShouldPersistTaps='always'>
+                        <Image
+                            style={styles.bgImage}
+                            source={require('../web/bg-nothing.png')}
+                        />
+                    </View>
+                ) : (
+                    <ScrollView contentContainerStyle={styles.listContainer} keyboardShouldPersistTaps='always'>
+                        <FlatList
+                            data={this.state.data.data}
+                            extraData={this.state.selectedIds}
+                            renderItem={this.renderItem}
+                            keyExtractor={(item, index) => index.toString()}
+                            onRefresh={this.onAddItem | this.onToggle}
+                            refreshing={this.state.isFetching}
+                            ListEmptyComponent={this._listEmptyComponent}
+                        />
+                    </ScrollView>
+                )}
                 <KeyboardAvoidingView behavior={behavior} keyboardVerticalOffset={keyboardVerticalOffset}>
                     <View style={styles.inputArea}>
                         <View style={{flex:5}}>
@@ -169,6 +236,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 10,
     },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    }, 
     container: {
         marginBottom: 5,
         paddingLeft: 2,
@@ -204,7 +276,26 @@ const styles = StyleSheet.create({
         marginVertical: 20,
         width: 100,
     },
+    Complete_text: {
+        fontWeight: '500',
+        fontSize: 18,
+        marginVertical: 20,
+        width: 100,
+        color: 'gray',
+        textDecorationLine: 'line-through'
+    },
     circle: {
+        width: 28,
+        height: 28,
+        marginRight: 20,
+        marginLeft: 20,
+
+        // border
+        borderRadius: 15,
+        borderColor: '#A593E0',
+        borderWidth: 2,
+    },
+    Completed_circle: {
         width: 28,
         height: 28,
         marginRight: 20,
@@ -247,5 +338,9 @@ const styles = StyleSheet.create({
     },
     submitText: {
         fontSize: 28,
+    },
+    bgImage: {
+        width: '50%',
+        height: '50%',
     }
 })

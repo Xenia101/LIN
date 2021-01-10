@@ -6,10 +6,12 @@ import {
   Text,
 } from 'react-native';
 
+import Github from '../Components/Github';
+
 const SettingsScreen = ({ route, navigation }) => {
   return(
     <View style={styles.container}>
-        <Text>Settings</Text>
+        <Github></Github>
         <StatusBar style="auto" />
     </View>
   )
